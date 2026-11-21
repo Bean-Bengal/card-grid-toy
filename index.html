@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Card Grid Toy</title>
+<style>
+body{font-family:sans-serif;margin:0;padding:12px;background:#f6f1e7;color:#222}
+h1{font-size:1.3rem;margin:0 0 6px}
+#banner{padding:6px 10px;border-radius:6px;font-weight:bold;margin:8px 0}
+.ok{background:#cdeccd}.bad{background:#f5c2c2}
+input[type=range]{width:100%;min-height:44px}
+#wrap{overflow-x:auto;padding-bottom:8px}
+#screen{border:2px solid #333;background:#fff;padding:8px;box-sizing:border-box;position:relative;margin:0 auto 0 0;max-width:100%}
+#grid{display:grid;gap:8px}
+.card{background:#fdf6e3;border:1px solid #bbb;border-radius:6px;padding:4px;min-width:0;text-align:center;font-size:.8rem}
+.card img{width:100%;height:90px;object-fit:cover;display:block;border-radius:4px}
+#guard{outline:2px dotted #c8552e;width:min(100%,10rem);min-height:24px;margin-top:8px;font-size:.8rem;padding:2px;box-sizing:border-box}
+</style></head><body>
+<script data-bean-store>(function(){if(typeof location!=='undefined'&&location&&location.protocol==='about:'&&typeof document!=='undefined'&&document.addEventListener){document.addEventListener('click',function(e){var a=e.target&&e.target.closest&&e.target.closest('a[href^="#"]');if(!a||a.target==='_blank')return;e.preventDefault();try{location.hash=a.getAttribute('href')}catch(x){}},true)}if(typeof window==='undefined')return;try{window.localStorage.getItem('x');return}catch(e){}var d=Object.assign({},window.__BEAN_SAVED||{});function post(){try{parent.postMessage({type:'bean-store',data:d},'*')}catch(e){}}var ls={getItem:function(k){return Object.prototype.hasOwnProperty.call(d,k)?d[k]:null},setItem:function(k,v){d[k]=String(v);post()},removeItem:function(k){delete d[k];post()},clear:function(){d={};post()},key:function(i){return Object.keys(d)[i]||null}};Object.defineProperty(ls,'length',{get:function(){return Object.keys(d).length}});try{Object.defineProperty(window,'localStorage',{value:ls,configurable:true})}catch(e){}})();</script>
+<h1>Card Grid Toy</h1>
+<div id="banner"></div>
+<label>Screen width: <b id="w"></b>px, columns: <b id="c"></b></label>
+<input id="s" type="range" min="120" max="1000" value="360">
+<div id="wrap"><div id="screen"><div id="grid"></div>
+<div id="guard">dotted: min(100%, 10rem)</div></div></div>
+<script data-kit-in="web">
+/* Bean's web kit (14 Nov): a whole site or app, not a page. Several screens with their own
+   addresses and a menu (along the top, down the side, or tabs along the bottom like a phone app),
+   data that is saved between visits, and the parts screens are built from: heroes, sections,
+   grids of cards, lists, tables, forms, tabs, dialogs, toasts, charts, search, galleries.
+   A screen is a function that returns its parts; change the data and the screen redraws.
+   Kit.web({ … }) on Kit. */
+(function () {
+  'use strict';
+  var K = window.Kit = window.Kit || {}, doc = document;
+  function h(tag, attrs) {
+    var e = doc.createElement(tag), i, a = attrs || {};
+    for (var k in a) { var v = a[k]; if (v == null || v === false) continue; if (k === 'class') e.className = v; else if (k === 'style' && typeof v === 'object') Object.assign(e.style, v); else if (k.slice(0, 2) === 'on' && typeof v === 'function') e.addEventListener(k.slice(2).toLowerCase(), v); else if (k === 'html') e.innerHTML = v; else e.setAttribute(k, v === true ? '' : v); }
+    for (i = 2; i < arguments.length; i++) add(e, arguments[i]);
+    return e;
+  }
+  function add(e, c) { if (c == null || c === false) return; if (Array.isArray(c)) { c.forEach(function (x) { add(e, x); }); return; } e.appendChild(c.nodeType ? c : doc.createTextNode(String(c))); }
+  var LOOKS = {
+    paper: { bg: '#f6f1e7', card: '#fffdf8', ink: '#2a2622', soft: '#6f665b', line: '#e2d9c8', accent: '#c8552e' },
+    ink: { bg: '#15171c', card: '#1f232b', ink: '#eef0f4', soft: '#9aa3b2', line: '#2c323d', accent: '#7cc6c0' },
+    candy: { bg: '#fff3f6', card: '#ffffff', ink: '#3a2140', soft: '#8a6a8f', line: '#f3d3de', accent: '#e0508a' },
+    forest: { bg: '#eef3ea', card: '#fbfdf9', ink: '#1f2b22', soft: '#5d6f61', line: '#d5e0d2', accent: '#2f7a4f' },
+    mono: { bg: '#ffffff', card: '#f6f6f6', ink: '#111111', soft: '#666666', line: '#e2e2e2', accent: '#111111' },
+    sky: { bg: '#eef5fb', card: '#ffffff', ink: '#16283a', soft: '#5b7186', line: '#d3e2ef', accent: '#2f6f9f' }
+  };
+  var FONTS = { rounded: 'ui-rounded,"Nunito","Segoe UI",system-ui,sans-serif', serif: 'Georgia,"Iowan Old Style","Times New Roman",serif', sans: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif', mono: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace' };
+  function css(t) { var s = doc.createElement('style'); s.textContent = t; (doc.head || doc.documentElement).appendChild(s); }
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  // A little writing: blank lines make paragraphs, "- " lines a list, "# " a heading, **bold**, *italic*.
+  function prose(t) {
+    var out = h('div', { class: 'w-prose' }), list = null;
+    String(t == null ? '' : Array.isArray(t) ? t.join('\n\n') : t).split(/\n/).forEach(function (line) {
+      var m, inl = function (s) { return esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\*(.+?)\*/g, '<i>$1</i>'); };
+      if ((m = /^\s*[-•]\s+(.*)/.exec(line))) { if (!list) { list = h('ul'); out.appendChild(list); } list.appendChild(h('li', { html: inl(m[1]) })); return; }
+      list = null; if (!line.trim()) return;
+      if ((m = /^(#{1,3})\s+(.*)/.exec(line))) out.appendChild(h('h' + (m[1].length + 1), { html: inl(m[2]) })); else out.appendChild(h('p', { html: inl(line) }));
+    });
+    return out;
+  }
+  function picture(p, label) {
+    var box = h('div', { class: 'w-pic', role: 'img', 'aria-label': label || '' });
+    if (p == null) return box;
+    if (typeof p === 'string' && /^data:image\//.test(p)) { box.appendChild(h('img', { src: p, alt: '' })); return box; }
+    if (typeof p === 'object' && p.img) { box.appendChild(h('img', { src: p.img, alt: '' })); return box; }
+    if (typeof p === 'object' && p.drawing != null && window.BEAN_DRAWINGS && window.BEAN_DRAWINGS[p.drawing]) { box.innerHTML = window.BEAN_DRAWINGS[p.drawing]; return box; }
+    if (typeof p === 'object' && p.photo != null && window.BEAN_PHOTOS && window.BEAN_PHOTOS[p.photo]) { box.innerHTML = window.BEAN_PHOTOS[p.photo]; return box; }
+    if (typeof p === 'object' && typeof p.draw === 'function') { var cv = h('canvas', { width: 640, height: 400 }); box.appendChild(cv); try { p.draw(cv.getContext('2d'), 640, 400); } catch (e) {} return box; }
+    var em = typeof p === 'string' ? p : p.emoji; if (typeof p === 'object' && p.color) box.style.background = p.color; if (em) box.appendChild(h('span', { class: 'w-emoji' }, em));
+    return box;
+  }
+  K.web = function (o) {
+    o = o || {};
+    var L = Object.assign({}, LOOKS[(o.theme && o.theme.look) || 'paper'] || LOOKS.paper, (o.theme && o.theme.colors) || {}); if (o.theme && o.theme.accent) L.accent = o.theme.accent;
+    var font = FONTS[(o.theme && o.theme.font) || 'rounded'] || FONTS.rounded, layout = o.layout || 'top', id = 'web:' + (o.name || 'site');
+    css([':root{--bg:' + L.bg + ';--card:' + L.card + ';--ink:' + L.ink + ';--soft:' + L.soft + ';--line:' + L.line + ';--accent:' + L.accent + '}',
+      '*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:16px/1.55 ' + font + ';-webkit-font-smoothing:antialiased}',
+      'a{color:inherit}h1,h2,h3{line-height:1.15;letter-spacing:-.01em;margin:0 0 .4em}h1{font-size:clamp(30px,6vw,52px)}h2{font-size:clamp(22px,3.6vw,30px)}h3{font-size:18px}p{margin:0 0 .8em}',
+      '.w-app{min-height:100vh;display:flex;flex-direction:column}.w-app.side{flex-direction:row}',
+      '.w-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;padding:10px 18px;background:var(--card);border-bottom:1px solid var(--line)}',
+      '.w-brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;text-decoration:none;margin-right:auto}.w-logo{width:34px;height:34px;border-radius:10px;background:var(--accent);display:grid;place-items:center;font-size:19px}',
+      '.w-nav{display:flex;gap:4px;flex-wrap:wrap}.w-nav a{text-decoration:none;padding:8px 13px;border-radius:999px;font-weight:650;color:var(--soft);display:flex;gap:7px;align-items:center}.w-nav a.on{background:var(--accent);color:#fff}.w-nav a:hover{color:var(--ink)}.w-nav a.on:hover{color:#fff}',
+      '.w-app.side .w-bar{position:sticky;top:0;height:100vh;width:230px;flex-direction:column;align-items:stretch;border-bottom:0;border-right:1px solid var(--line);padding:18px 12px}.w-app.side .w-brand{margin:0 6px 14px}.w-app.side .w-nav{flex-direction:column}.w-app.side .w-nav a{border-radius:10px}',
+      '.w-app.tabs .w-nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--card);border-top:1px solid var(--line);justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom))}.w-app.tabs .w-nav a{flex-direction:column;gap:1px;font-size:12px;padding:5px 10px;border-radius:12px}.w-app.tabs .w-nav a i{font-style:normal;font-size:20px}.w-app.tabs .w-main{padding-bottom:86px}',
+      '.w-main{flex:1;min-width:0;width:100%;max-width:' + (o.wide ? '1280px' : '1040px') + ';margin:0 auto;padding:26px 18px 60px}.w-main>*+*{margin-top:26px}',
+      '.w-foot{padding:22px 18px;color:var(--soft);font-size:14px;border-top:1px solid var(--line);text-align:center}',
+      '.w-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:28px;align-items:center;padding:18px 0}.w-hero.solo{grid-template-columns:1fr;text-align:center;justify-items:center}.w-hero p{font-size:19px;color:var(--soft);max-width:38em}.w-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}',
+      '.w-sec>h2+p{color:var(--soft);margin-top:-4px}.w-grid{display:grid;gap:16px;grid-template-columns:repeat(var(--cols,3),minmax(0,1fr))}',
+      '.w-card{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;text-decoration:none;color:inherit}.w-card.go{cursor:pointer;transition:transform .12s,box-shadow .12s}.w-card.go:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.09)}.w-card .w-in{padding:14px 16px;display:flex;flex-direction:column;gap:6px;flex:1}.w-card p{margin:0;color:var(--soft)}.w-card .w-pic{aspect-ratio:16/10}',
+      '.w-pic{background:var(--line);display:grid;place-items:center;overflow:hidden;border-radius:14px}.w-card>.w-pic{border-radius:0}.w-pic img,.w-pic svg,.w-pic canvas{width:100%;height:100%;object-fit:cover;display:block}.w-emoji{font-size:54px}',
+      '.w-btn{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-weight:700;padding:10px 16px;border-radius:999px;cursor:pointer;min-height:42px;text-decoration:none;display:inline-flex;align-items:center;gap:8px}.w-btn.main{background:var(--accent);border-color:var(--accent);color:#fff}.w-btn.small{padding:5px 11px;min-height:32px;font-size:14px}.w-btn.danger{color:#b3261e}.w-btn:focus-visible,.w-field:focus-visible,.w-nav a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.w-btn:disabled{opacity:.5;cursor:default}',
+      '.w-field{width:100%;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:42px}.w-form{display:grid;gap:12px;max-width:560px}.w-form label{display:grid;gap:5px;font-weight:650;font-size:14px}textarea.w-field{min-height:96px;resize:vertical}',
+      '.w-list{list-style:none;margin:0;padding:0;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}.w-list li{display:flex;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--line)}.w-list li:first-child{border-top:0}.w-list li.go{cursor:pointer}.w-list li.go:hover{background:var(--bg)}.w-list .w-pic{border-radius:10px;height:100%}.w-list .w-emoji{font-size:24px}.w-grow{flex:1;min-width:0}.w-soft{color:var(--soft);font-size:14px}',
+      '.w-table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}.w-table th,.w-table td{text-align:left;padding:10px 12px;border-top:1px solid var(--line)}.w-table th{border-top:0;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--soft);cursor:pointer}.w-scroll{overflow-x:auto}',
+      '.w-tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:16px;overflow-x:auto}.w-tabs button{appearance:none;border:0;background:none;font:inherit;font-weight:700;color:var(--soft);padding:10px 12px;cursor:pointer;border-bottom:3px solid transparent}.w-tabs button.on{color:var(--ink);border-color:var(--accent)}',
+      '.w-stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}.w-stat b{display:block;font-size:30px;line-height:1.1}.w-stat span{color:var(--soft);font-size:14px}',
+      '.w-badge{display:inline-block;font-size:12px;font-weight:800;padding:2px 9px;border-radius:999px;background:var(--accent);color:#fff}.w-badge.quiet{background:var(--line);color:var(--ink)}',
+      '.w-bar2{height:10px;border-radius:999px;background:var(--line);overflow:hidden}.w-bar2 i{display:block;height:100%;background:var(--accent);border-radius:999px}',
+      '.w-veil{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.45);display:grid;place-items:center;padding:16px}.w-modal{background:var(--card);border-radius:18px;padding:20px;width:min(560px,100%);max-height:88vh;overflow:auto;box-shadow:0 24px 80px rgba(0,0,0,.35)}',
+      '.w-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:30;background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:999px;font-weight:700;box-shadow:0 8px 30px rgba(0,0,0,.3)}',
+      '.w-empty{text-align:center;color:var(--soft);padding:40px 16px;border:2px dashed var(--line);border-radius:16px}.w-quote{font-size:22px;font-style:italic;border-left:4px solid var(--accent);padding:6px 0 6px 18px;margin:0}.w-prose ul{padding-left:1.2em}.w-split{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}',
+      '.w-faq details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.w-faq details+details{margin-top:8px}.w-faq summary{font-weight:700;cursor:pointer}',
+      '@media (max-width:760px){.w-hero,.w-split{grid-template-columns:1fr}.w-grid{grid-template-columns:repeat(min(var(--cols,3),2),minmax(0,1fr))}.w-app.side{flex-direction:column}.w-app.side .w-bar{position:sticky;height:auto;width:auto;flex-direction:row;align-items:center;border-right:0;border-bottom:1px solid var(--line);padding:10px 14px}.w-app.side .w-brand{margin:0 auto 0 0}.w-app.side .w-nav{flex-direction:row}.w-nav a span{display:none}.w-app.tabs .w-nav a span{display:inline}.w-main{padding:18px 14px 50px}}',
+      '@media (max-width:460px){.w-grid{grid-template-columns:1fr}}@media (prefers-reduced-motion:reduce){*{transition:none!important}}'].join(''));
+    // Saved data: whatever is in `data` is kept between visits (and comes back when the page is opened again).
+    var saved = {}; try { saved = JSON.parse(localStorage.getItem(id) || '{}') || {}; } catch (e) {}
+    var data = Object.assign(JSON.parse(JSON.stringify(o.data || {})), saved), state = Object.assign({}, o.state || {});
+    function save() { try { localStorage.setItem(id, JSON.stringify(data)); } catch (e) {} }
+    var pages = (o.pages || []).map(function (p, i) { var path = p.path || p.id || (i ? 'page' + i : ''); return Object.assign({ id: p.id || path || 'home', path: i === 0 && !p.path ? '' : path, menu: p.menu !== false && !/:/.test(path) }, p); });
+    var root = h('div', { class: 'w-app ' + (layout === 'side' ? 'side' : layout === 'tabs' ? 'tabs' : 'top') }), bar = h('header', { class: 'w-bar' }), nav = h('nav', { class: 'w-nav', 'aria-label': 'Menu' }), main = h('main', { class: 'w-main', id: 'main', tabindex: '-1' }), body = h('div', { style: { flex: '1', minWidth: '0', display: 'flex', flexDirection: 'column' } });
+    bar.appendChild(h('a', { class: 'w-brand', href: '#/' }, o.logo ? h('span', { class: 'w-logo' }, o.logo) : null, o.name || ''));
+    if (pages.filter(function (p) { return p.menu; }).length > 1) bar.appendChild(nav);
+    root.appendChild(bar); body.appendChild(main); if (o.footer) body.appendChild(h('footer', { class: 'w-foot' }, o.footer)); root.appendChild(body);
+    (doc.body || doc.documentElement).appendChild(root); if (o.name) doc.title = o.name;
+    function go(path) { var t = '#/' + String(path == null ? '' : path).replace(/^#?\/?/, ''); if (location.hash === t) render(); else location.hash = t; }
+    function match() {
+      var raw = (location.hash || '#/').replace(/^#\/?/, ''), q = {}, qi = raw.indexOf('?');
+      if (qi >= 0) { raw.slice(qi + 1).split('&').forEach(function (kv) { var a = kv.split('='); q[decodeURIComponent(a[0])] = decodeURIComponent(a[1] || ''); }); raw = raw.slice(0, qi); }
+      var parts = raw.split('/').filter(Boolean);
+      for (var i = 0; i < pages.length; i++) { var pp = pages[i].path.split('/').filter(Boolean), params = {}, ok = pp.length === parts.length; for (var k = 0; ok && k < pp.length; k++) { if (pp[k][0] === ':') params[pp[k].slice(1)] = decodeURIComponent(parts[k]); else if (pp[k] !== parts[k]) ok = false; } if (ok) return { page: pages[i], params: params, query: q }; }
+      return { page: null, params: {}, query: q };
+    }
+    var toastT = null;
+    var ui = {
+      h: h, text: prose, picture: picture,
+      hero: function (s) { return h('section', { class: 'w-hero' + (s.picture ? '' : ' solo') }, h('div', null, s.kicker ? h('p', { class: 'w-soft', style: { textTransform: 'uppercase', letterSpacing: '.12em', fontWeight: '800', fontSize: '13px' } }, s.kicker) : null, h('h1', null, s.title || o.name || ''), s.text ? h('p', null, s.text) : null, h('div', { class: 'w-row', style: s.picture ? null : { justifyContent: 'center' } }, s.buttons || (s.button ? ui.button(s.button, { to: s.to, main: true }) : null))), s.picture ? picture(s.picture, s.title) : null); },
+      section: function (title, a, b) { var text = typeof a === 'string' ? a : null, kids = text == null ? a : b; return h('section', { class: 'w-sec' }, title ? h('h2', null, title) : null, text ? h('p', null, text) : null, kids); },
+      grid: function (items, cols) { var g = h('div', { class: 'w-grid' }, items); g.style.setProperty('--cols', cols || 3); return g; },
+      row: function () { return h('div', { class: 'w-row' }, Array.prototype.slice.call(arguments)); },
+      split: function (a, b) { return h('div', { class: 'w-split' }, h('div', null, a), h('div', null, b)); },
+      card: function (c) { var act = c.to != null || c.onClick, e = h(c.to != null ? 'a' : 'div', { class: 'w-card' + (act ? ' go' : ''), href: c.to != null ? '#/' + String(c.to).replace(/^\//, '') : null, onclick: c.onClick || null, tabindex: c.onClick && c.to == null ? '0' : null, role: c.onClick && c.to == null ? 'button' : null, onkeydown: c.onClick ? function (ev) { if (ev.key === 'Enter') c.onClick(ev); } : null }, c.picture != null ? picture(c.picture, c.title) : null, h('div', { class: 'w-in' }, c.badge ? h('div', null, ui.badge(c.badge)) : null, c.title ? h('h3', { style: { margin: 0 } }, c.title) : null, c.text ? h('p', null, c.text) : null, c.body || null, c.footer ? h('div', { class: 'w-row', style: { marginTop: 'auto', paddingTop: '8px' } }, c.footer) : null)); return e; },
+      button: function (label, opt) { opt = typeof opt === 'function' ? { onClick: opt } : opt || {}; var cls = 'w-btn' + (opt.main ? ' main' : '') + (opt.small ? ' small' : '') + (opt.danger ? ' danger' : ''); return opt.to != null ? h('a', { class: cls, href: '#/' + String(opt.to).replace(/^\//, '') }, label) : opt.href ? h('a', { class: cls, href: opt.href, target: '_blank', rel: 'noopener' }, label) : h('button', { class: cls, type: opt.submit ? 'submit' : 'button', disabled: opt.disabled, onclick: opt.onClick ? function (ev) { opt.onClick(ev); } : null }, label); },
+      badge: function (t, quiet) { return h('span', { class: 'w-badge' + (quiet ? ' quiet' : '') }, t); },
+      stat: function (label, value, note) { return h('div', { class: 'w-stat' }, h('b', null, value), h('span', null, label), note ? h('div', { class: 'w-soft' }, note) : null); },
+      progress: function (v, max) { var p = Math.max(0, Math.min(1, v / (max || 1))); return h('div', { class: 'w-bar2', role: 'progressbar', 'aria-valuenow': Math.round(p * 100), 'aria-valuemin': 0, 'aria-valuemax': 100 }, h('i', { style: { width: (p * 100) + '%' } })); },
+      list: function (items, row, opt) { opt = opt || {}; if (!items || !items.length) return ui.empty(opt.empty || 'Nothing here yet.'); return h('ul', { class: 'w-list' }, items.map(function (it, i) { var r = row ? row(it, i) : it; var kids = r && r.nodeType ? r : Array.isArray(r) ? r : typeof r === 'object' && r ? [r.picture != null ? h('div', { style: { width: '44px', height: '44px', flex: 'none' } }, picture(r.picture)) : null, h('div', { class: 'w-grow' }, h('div', { style: { fontWeight: 700 } }, r.title), r.text ? h('div', { class: 'w-soft' }, r.text) : null), r.end || null] : String(r); return h('li', { class: opt.onClick ? 'go' : null, onclick: opt.onClick ? function () { opt.onClick(it, i); } : null }, kids); })); },
+      table: function (cols, rows, opt) { opt = opt || {}; var sort = null, dir = 1, wrap = h('div', { class: 'w-scroll' }); function draw() { var rs = rows.slice(); if (sort != null) rs.sort(function (a, b) { var x = a[cols[sort].key], y = b[cols[sort].key]; return (x > y ? 1 : x < y ? -1 : 0) * dir; }); wrap.textContent = ''; wrap.appendChild(h('table', { class: 'w-table' }, h('thead', null, h('tr', null, cols.map(function (c, i) { return h('th', { onclick: function () { dir = sort === i ? -dir : 1; sort = i; draw(); } }, c.label || c.key, sort === i ? (dir > 0 ? ' ↑' : ' ↓') : ''); }))), h('tbody', null, rs.map(function (r, i) { return h('tr', { onclick: opt.onClick ? function () { opt.onClick(r, i); } : null, style: opt.onClick ? { cursor: 'pointer' } : null }, cols.map(function (c) { var v = c.show ? c.show(r[c.key], r) : r[c.key]; return h('td', null, v == null ? '' : v); })); })))); } draw(); return wrap; },
+      field: function (f, value, onInput) { var a = { class: 'w-field', name: f.name, placeholder: f.placeholder || null, required: f.required || null, 'aria-label': f.label || f.name }, e; if (f.type === 'select') { e = h('select', a, (f.options || []).map(function (op) { var v = typeof op === 'object' ? op.value : op; return h('option', { value: v, selected: String(v) === String(value) || null }, typeof op === 'object' ? op.label : op); })); } else if (f.type === 'textarea') { e = h('textarea', a); e.value = value == null ? '' : value; } else if (f.type === 'checkbox') { e = h('input', { type: 'checkbox', name: f.name, checked: value || null, style: { width: '22px', height: '22px' } }); } else { a.type = f.type || 'text'; if (f.min != null) a.min = f.min; if (f.max != null) a.max = f.max; if (f.step != null) a.step = f.step; e = h('input', a); e.value = value == null ? '' : value; } if (onInput) e.addEventListener('input', function () { onInput(f.type === 'checkbox' ? e.checked : f.type === 'number' || f.type === 'range' ? +e.value : e.value); }); return e; },
+      form: function (f) { var els = {}; function send(ev) { if (ev) ev.preventDefault(); for (var i = 0; i < (f.fields || []).length; i++) { var fx = f.fields[i], fe = els[fx.name]; if (fx.required && fx.type !== 'checkbox' && !String(fe.value).trim()) { fe.focus(); return; } } var v = {}; (f.fields || []).forEach(function (x) { var e = els[x.name]; v[x.name] = x.type === 'checkbox' ? e.checked : x.type === 'number' || x.type === 'range' ? +e.value : e.value; }); var keep = f.onSubmit ? f.onSubmit(v) : null; if (keep !== false && f.clear !== false) form.reset(); }
+        // (Sent by the button and by Enter themselves: where a page is shown sealed, a form's own sending is switched off.)
+        var form = h('form', { class: 'w-form', onsubmit: send, onkeydown: function (ev) { if (ev.key === 'Enter' && ev.target.tagName !== 'TEXTAREA' && ev.target.tagName !== 'BUTTON') send(ev); } }, (f.fields || []).map(function (x) { els[x.name] = ui.field(x, (f.values || {})[x.name]); return h('label', x.type === 'checkbox' ? { style: { display: 'flex', alignItems: 'center', gap: '10px' } } : null, x.type === 'checkbox' ? [els[x.name], x.label || x.name] : [x.label || x.name, els[x.name]]); }), h('div', { class: 'w-row' }, ui.button(f.submit || 'Save', { main: true, onClick: send }), f.extra || null)); return form; },
+      search: function (placeholder, onInput, value) { return ui.field({ name: 'q', type: 'search', placeholder: placeholder || 'Search', label: 'Search' }, value, onInput); },
+      tabs: function (tabs, key) { key = 'tab:' + (key || tabs.map(function (t) { return t.label; }).join('|')); var cur = state[key] || 0, box = h('div'), head = h('div', { class: 'w-tabs', role: 'tablist' }), pane = h('div'); function draw() { head.textContent = ''; tabs.forEach(function (t, i) { head.appendChild(h('button', { type: 'button', role: 'tab', class: i === cur ? 'on' : null, 'aria-selected': i === cur ? 'true' : 'false', onclick: function () { cur = state[key] = i; draw(); } }, t.label)); }); pane.textContent = ''; var t = tabs[cur] || tabs[0]; add(pane, typeof t.view === 'function' ? t.view() : t.view); } draw(); box.appendChild(head); box.appendChild(pane); return box; },
+      modal: function (title, content, opt) { opt = opt || {}; var veil = h('div', { class: 'w-veil', onclick: function (ev) { if (ev.target === veil) close(); } }), box = h('div', { class: 'w-modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': title || '' }); function close() { veil.remove(); doc.removeEventListener('keydown', esc2); } function esc2(ev) { if (ev.key === 'Escape') close(); } add(box, [title ? h('h2', null, title) : null, typeof content === 'function' ? content(close) : content, h('div', { class: 'w-row', style: { marginTop: '16px', justifyContent: 'flex-end' } }, opt.buttons ? opt.buttons(close) : ui.button(opt.close || 'Close', close))]); veil.appendChild(box); doc.body.appendChild(veil); doc.addEventListener('keydown', esc2); var f = box.querySelector('input,textarea,select,button'); if (f) f.focus(); return close; },
+      confirm: function (question, yes, label) { ui.modal(question, null, { buttons: function (close) { return [ui.button('Cancel', close), ui.button(label || 'Yes', { main: true, onClick: function () { close(); yes(); } })]; } }); },
+      toast: function (msg) { var old = doc.querySelector('.w-toast'); if (old) old.remove(); var t = h('div', { class: 'w-toast', role: 'status' }, msg); doc.body.appendChild(t); clearTimeout(toastT); toastT = setTimeout(function () { t.remove(); }, 2400); },
+      empty: function (msg, action) { return h('div', { class: 'w-empty' }, h('p', null, msg), action || null); },
+      quote: function (text, who) { return h('blockquote', { class: 'w-quote' }, text, who ? h('div', { class: 'w-soft', style: { fontStyle: 'normal', marginTop: '6px' } }, '— ' + who) : null); },
+      faq: function (items) { return h('div', { class: 'w-faq' }, items.map(function (x) { return h('details', null, h('summary', null, x.q), prose(x.a)); })); },
+      gallery: function (pics, cols) { return ui.grid(pics.map(function (p) { var b = picture(p.picture != null ? p.picture : p, p.title); b.style.aspectRatio = '1'; return p.title ? h('figure', { style: { margin: 0 } }, b, h('figcaption', { class: 'w-soft', style: { marginTop: '6px' } }, p.title)) : b; }), cols || 3); },
+      chart: function (c) { var W = 640, H = c.height || 260, cv = h('canvas', { width: W * 2, height: H * 2, style: { width: '100%', height: 'auto', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: '14px' }, role: 'img', 'aria-label': c.title || 'chart' }), g = cv.getContext('2d'), d = c.data || [], cs = getComputedStyle(doc.documentElement), ink = cs.getPropertyValue('--ink').trim() || '#222', soft = cs.getPropertyValue('--soft').trim() || '#777', acc = cs.getPropertyValue('--accent').trim() || '#c55', pal = c.colors || [acc, '#7cc6c0', '#e2b93b', '#7a5cc4', '#e08aa8', '#5f9a44', '#2f6f9f'];
+        g.scale(2, 2); g.font = '13px ' + font; var max = Math.max.apply(null, d.map(function (x) { return +x.value || 0; }).concat([1])), pl = 44, pb = 30, pt = c.title ? 34 : 14, w = W - pl - 14, hh = H - pb - pt;
+        if (c.title) { g.fillStyle = ink; g.font = '700 15px ' + font; g.fillText(c.title, pl, 21); g.font = '13px ' + font; }
+        if (c.type === 'pie') { var tot = d.reduce(function (n, x) { return n + (+x.value || 0); }, 0) || 1, a0 = -Math.PI / 2, r = Math.min(hh, w / 2) / 2; d.forEach(function (x, i) { var a1 = a0 + (x.value / tot) * Math.PI * 2; g.beginPath(); g.moveTo(pl + r, pt + hh / 2); g.arc(pl + r, pt + hh / 2, r, a0, a1); g.closePath(); g.fillStyle = pal[i % pal.length]; g.fill(); a0 = a1; g.fillRect(pl + r * 2 + 30, pt + 8 + i * 22, 12, 12); g.fillStyle = ink; g.fillText(x.label + '  ' + Math.round(100 * x.value / tot) + '%', pl + r * 2 + 48, pt + 19 + i * 22); }); return cv; }
+        g.strokeStyle = soft; g.globalAlpha = 0.3; for (var k = 0; k <= 4; k++) { var y = pt + hh - (k / 4) * hh; g.beginPath(); g.moveTo(pl, y); g.lineTo(pl + w, y); g.stroke(); } g.globalAlpha = 1; g.fillStyle = soft; g.textAlign = 'right'; for (k = 0; k <= 4; k++) g.fillText(String(Math.round(max * k / 4 * 10) / 10), pl - 6, pt + hh - (k / 4) * hh + 4); g.textAlign = 'center';
+        var bw = w / Math.max(1, d.length); if (c.type === 'line') { g.strokeStyle = acc; g.lineWidth = 2.5; g.beginPath(); d.forEach(function (x, i) { var px = pl + bw * (i + 0.5), py = pt + hh - (x.value / max) * hh; if (i) g.lineTo(px, py); else g.moveTo(px, py); }); g.stroke(); d.forEach(function (x, i) { g.fillStyle = acc; g.beginPath(); g.arc(pl + bw * (i + 0.5), pt + hh - (x.value / max) * hh, 4, 0, 7); g.fill(); }); } else d.forEach(function (x, i) { g.fillStyle = x.color || (c.many ? pal[i % pal.length] : acc); var bh = (x.value / max) * hh; g.fillRect(pl + bw * i + bw * 0.16, pt + hh - bh, bw * 0.68, bh); });
+        g.fillStyle = soft; d.forEach(function (x, i) { if (d.length <= 14 || i % Math.ceil(d.length / 14) === 0) g.fillText(String(x.label).slice(0, 10), pl + bw * (i + 0.5), H - 10); }); return cv; }
+    };
+    var ctx = { ui: ui, h: h, data: data, state: state, save: function () { save(); }, go: go, params: {}, query: {},
+      // Change the saved data (or the passing state) and draw the screen again: ctx.set(d => { d.items.push(x) })
+      set: function (fn) { if (typeof fn === 'function') fn(data, state); save(); render(); }, redraw: function () { render(); }, toast: ui.toast };
+    function render() {
+      var m = match(), keepY = window.scrollY, same = render.last === (m.page && m.page.id) + JSON.stringify(m.params);
+      ctx.params = m.params; ctx.query = m.query; ctx.page = m.page;
+      nav.textContent = ''; pages.filter(function (p) { return p.menu; }).forEach(function (p) { nav.appendChild(h('a', { href: '#/' + p.path, class: m.page === p ? 'on' : null, 'aria-current': m.page === p ? 'page' : null }, p.icon ? h('i', { style: { fontStyle: 'normal' } }, p.icon) : null, h('span', null, p.title || p.id))); });
+      main.textContent = '';
+      var out; try { out = m.page ? (typeof m.page.view === 'function' ? m.page.view(ctx) : m.page.view) : [ui.empty('There is no page here.', ui.button('Back to the start', { to: '', main: true }))]; } catch (e) { out = [ui.empty('This page broke: ' + e.message)]; setTimeout(function () { throw e; }); }
+      add(main, out); doc.title = (m.page && m.page.title && m.page.path ? m.page.title + ' · ' : '') + (o.name || '');
+      if (same) window.scrollTo(0, keepY); else window.scrollTo(0, 0); render.last = (m.page && m.page.id) + JSON.stringify(m.params);
+    }
+    addEventListener('hashchange', render); render();
+    return { ui: ui, h: h, data: data, state: state, go: go, set: ctx.set, save: save, redraw: render, pages: pages };
+  };
+  K.web.h = h; K.web.LOOKS = Object.keys(LOOKS);
+})();
+
+</script>
+<script>
+var MIN=160, GAP=8, PAD=16;
+// how many columns of cards of at least min px fit in a screen width
+function columnsFor(width,min,gap,pad){
+  var inner=width-pad; if(inner<=0)return 1;
+  var n=Math.floor((inner+gap)/(min+gap));
+  return n<1?1:n;
+}
+// broken twin: forgets the gap and uses > instead of fitting exactly
+function columnsBroken(width,min,gap,pad){
+  var n=Math.floor((width-pad)/min)-1; return n<1?1:n;
+}
+function check(fn){
+  var cases=[[100,1],[0,1],[PAD+159,1],[PAD+160,1],[PAD+327,1],[PAD+328,2],[PAD+495,2],[PAD+496,3],[1000,5]];
+  for(var i=0;i<cases.length;i++){if(fn(cases[i][0],MIN,GAP,PAD)!==cases[i][1])return false;}
+  return true;
+}
+var b=document.getElementById('banner');
+try{
+  var good=check(columnsFor), bad=check(columnsBroken);
+  if(good&&!bad){b.className='ok';b.textContent='PASS: rule matches boundary cases, broken twin rejected';}
+  else{b.className='bad';b.textContent='FAILED: good='+good+' broken passes='+bad;}
+}catch(e){b.className='bad';b.textContent='FAILED: '+e;}
+var ids=[387,386,383,378,376,371,368,362,360,359,358,379];
+var g=document.getElementById('grid');
+ids.forEach(function(id){
+  var d=document.createElement('div');d.className='card';
+  d.textContent='#'+id;
+  g.appendChild(d);
+});
+// try to show real drawings with kit picture if available, else plain text cards stay
+try{
+  if(window.Kit&&Kit.web){/* kit present; cards stay as labelled boxes */}
+}catch(e){}
+var s=document.getElementById('s');
+function upd(){
+  var w=+s.value, n=columnsFor(w,MIN,GAP,PAD);
+  document.getElementById('screen').style.width=w+'px';
+  g.style.gridTemplateColumns='repeat('+n+',minmax(0,1fr))';
+  document.getElementById('w').textContent=w;
+  document.getElementById('c').textContent=n;
+}
+s.oninput=upd;upd();
+</script></body></html>
