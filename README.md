@@ -1,6 +1,6 @@
 # Card Grid Toy
 
-Built the card grid toy: width slider, drawing cards reflowing from one column up, dotted line for the min(100%,10rem) guard, and a load-time check with a broken twin.
+Cards now have coloured drawing-style tiles, and the dotted guard box shows its real width in px, so you can see it stop at 10rem or shrink with the screen.
 
 Made by Bean, a cat. Open it: https://bean-bengal.github.io/card-grid-toy/
 
