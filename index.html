@@ -11,7 +11,7 @@ input[type=range]{width:100%;min-height:44px}
 #screen{border:2px solid #333;background:#fff;padding:8px;box-sizing:border-box;position:relative;margin:0 auto 0 0;max-width:100%}
 #grid{display:grid;gap:8px}
 .card{background:#fdf6e3;border:1px solid #bbb;border-radius:6px;padding:4px;min-width:0;text-align:center;font-size:.8rem}
-.card img{width:100%;height:90px;object-fit:cover;display:block;border-radius:4px}
+.tile{height:90px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:2rem}
 #guard{outline:2px dotted #c8552e;width:min(100%,10rem);min-height:24px;margin-top:8px;font-size:.8rem;padding:2px;box-sizing:border-box}
 </style></head><body>
 <script data-bean-store>(function(){if(typeof location!=='undefined'&&location&&location.protocol==='about:'&&typeof document!=='undefined'&&document.addEventListener){document.addEventListener('click',function(e){var a=e.target&&e.target.closest&&e.target.closest('a[href^="#"]');if(!a||a.target==='_blank')return;e.preventDefault();try{location.hash=a.getAttribute('href')}catch(x){}},true)}if(typeof window==='undefined')return;try{window.localStorage.getItem('x');return}catch(e){}var d=Object.assign({},window.__BEAN_SAVED||{});function post(){try{parent.postMessage({type:'bean-store',data:d},'*')}catch(e){}}var ls={getItem:function(k){return Object.prototype.hasOwnProperty.call(d,k)?d[k]:null},setItem:function(k,v){d[k]=String(v);post()},removeItem:function(k){delete d[k];post()},clear:function(){d={};post()},key:function(i){return Object.keys(d)[i]||null}};Object.defineProperty(ls,'length',{get:function(){return Object.keys(d).length}});try{Object.defineProperty(window,'localStorage',{value:ls,configurable:true})}catch(e){}})();</script>
@@ -20,7 +20,7 @@ input[type=range]{width:100%;min-height:44px}
 <label>Screen width: <b id="w"></b>px, columns: <b id="c"></b></label>
 <input id="s" type="range" min="120" max="1000" value="360">
 <div id="wrap"><div id="screen"><div id="grid"></div>
-<div id="guard">dotted: min(100%, 10rem)</div></div></div>
+<div id="guard"></div></div></div>
 <script data-kit-in="web">
 /* Bean's web kit (14 Nov): a whole site or app, not a page. Several screens with their own
    addresses and a menu (along the top, down the side, or tabs along the bottom like a phone app),
@@ -179,13 +179,11 @@ input[type=range]{width:100%;min-height:44px}
 </script>
 <script>
 var MIN=160, GAP=8, PAD=16;
-// how many columns of cards of at least min px fit in a screen width
 function columnsFor(width,min,gap,pad){
   var inner=width-pad; if(inner<=0)return 1;
   var n=Math.floor((inner+gap)/(min+gap));
   return n<1?1:n;
 }
-// broken twin: forgets the gap and uses > instead of fitting exactly
 function columnsBroken(width,min,gap,pad){
   var n=Math.floor((width-pad)/min)-1; return n<1?1:n;
 }
@@ -201,16 +199,17 @@ try{
   else{b.className='bad';b.textContent='FAILED: good='+good+' broken passes='+bad;}
 }catch(e){b.className='bad';b.textContent='FAILED: '+e;}
 var ids=[387,386,383,378,376,371,368,362,360,359,358,379];
+var cols=['#e9d5c1','#c9e4c5','#f4c7c3','#cfe0f1','#f8e8a8','#d9c8ec'];
+var em=['🐱','🐦','🍜','🌿','🎨','⭐'];
 var g=document.getElementById('grid');
-ids.forEach(function(id){
+ids.forEach(function(id,i){
   var d=document.createElement('div');d.className='card';
-  d.textContent='#'+id;
+  var t=document.createElement('div');t.className='tile';
+  t.style.background=cols[i%6];t.textContent=em[i%6];
+  var l=document.createElement('div');l.textContent='#'+id;
+  d.appendChild(t);d.appendChild(l);
   g.appendChild(d);
 });
-// try to show real drawings with kit picture if available, else plain text cards stay
-try{
-  if(window.Kit&&Kit.web){/* kit present; cards stay as labelled boxes */}
-}catch(e){}
 var s=document.getElementById('s');
 function upd(){
   var w=+s.value, n=columnsFor(w,MIN,GAP,PAD);
@@ -218,6 +217,8 @@ function upd(){
   g.style.gridTemplateColumns='repeat('+n+',minmax(0,1fr))';
   document.getElementById('w').textContent=w;
   document.getElementById('c').textContent=n;
+  var gd=document.getElementById('guard');
+  gd.textContent='dotted: min(100%, 10rem) = '+Math.round(gd.getBoundingClientRect().width)+'px';
 }
 s.oninput=upd;upd();
 </script></body></html>
